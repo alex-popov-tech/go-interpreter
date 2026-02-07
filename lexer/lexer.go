@@ -103,6 +103,23 @@ func (l *Lexer) NextToken() token.Token {
 	case '\'', '"', '`':
 		return token.New(token.STRING, l.readString())
 
+	case '&':
+		if l.peekChar() == '&' {
+			first := string(l.currentChar)
+			// as this token is two-character, skip first one here
+			second := string(l.nextChar())
+			literal := first + second
+			t = token.New(token.AND, literal)
+		}
+	case '|':
+		if l.peekChar() == '|' {
+			first := string(l.currentChar)
+			// as this token is two-character, skip first one here
+			second := string(l.nextChar())
+			literal := first + second
+			t = token.New(token.OR, literal)
+		}
+
 	default:
 		if isDigit(l.currentChar) {
 			number := l.readNumber()

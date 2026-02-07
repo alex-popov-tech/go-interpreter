@@ -13,7 +13,7 @@ type InfixExpression struct {
 }
 
 func (this *InfixExpression) expressionNode()      {}
-func (this *InfixExpression) TokenLiteral() string { return this.Token.Literal }
-func (this *InfixExpression) String() string {
+func (this InfixExpression) TokenLiteral() string { return this.Token.Literal }
+func (this InfixExpression) String() string {
 	return fmt.Sprintf("(%s %s %s)", this.Left.String(), this.Operator, this.Right.String())
 }

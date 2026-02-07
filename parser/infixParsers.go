@@ -13,6 +13,11 @@ func (p *Parser) parseInfixExpression(left ast.Expression) (ast.Expression, erro
 
 	precedence := p.currPrecedence()
 
+	// Assignment is right-associative: x = y = 5 should parse as x = (y = 5)
+	if p.currentToken.Type == token.ASSIGN {
+		precedence = precedence - 1
+	}
+
 	p.nextToken()
 
 	exrp, err := p.parseExpression(precedence)
@@ -29,18 +34,16 @@ func (p *Parser) parseCallExpression(left ast.Expression) (ast.Expression, error
 		trace(fmt.Sprintf("parseCallExpression, identifier or literal is %s", left.String())),
 	)
 	res := &ast.CallExpression{Token: p.currentToken, FnIdentifier: left}
-	arguments := []*ast.Identifier{}
+	arguments := []ast.Expression{}
 
 	// go from '(' to first argument or ')'
 	p.nextToken()
 	for token.RPAREN != p.currentToken.Type && token.EOF != p.currentToken.Type {
-		if token.IDENTIFIER != p.currentToken.Type {
-			return nil, fmt.Errorf("expected %s, got %s", token.IDENTIFIER, p.currentToken.Type)
+		expr, err := p.parseExpression(LOWEST)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse call argument expression: %s", err)
 		}
-		arguments = append(
-			arguments,
-			&ast.Identifier{Token: p.currentToken, Value: p.currentToken.Literal},
-		)
+		arguments = append(arguments, expr)
 
 		// if next token is ',' - go over it
 		if token.COMMA == p.peekToken.Type {

@@ -1,22 +1,26 @@
-package repl
+package cmd
 
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 
+	"monkey/evaluator"
 	"monkey/lexer"
+	"monkey/object"
 	"monkey/parser"
 )
 
 const PROMPT = ">> "
 
-func Start(in io.Reader, out io.Writer) {
+func Repl() {
+	in := os.Stdin
+	out := os.Stdout
 	scanner := bufio.NewScanner(in)
 
-	fmt.Printf("Hello bro! Thin is the Monkey programming language!\n")
-	fmt.Printf("Feel free to type in commands:\n")
+	scope := object.NewGlobalScope()
+	fmt.Println("Hello bro! This is the Monkey programming language!")
+	fmt.Println("Feel free to type in commands:")
 	for {
 		fmt.Fprintf(out, PROMPT)
 		scanned := scanner.Scan()
@@ -26,6 +30,7 @@ func Start(in io.Reader, out io.Writer) {
 
 		line := scanner.Text()
 		if line == "q" || line == "quit" {
+			fmt.Printf("Bye bye!")
 			os.Exit(0)
 		}
 		l := lexer.New(line)
@@ -33,16 +38,11 @@ func Start(in io.Reader, out io.Writer) {
 		program := p.ParseProgram()
 
 		if len(p.Errors()) > 0 {
-			printParserErrors(out, p.Errors())
+			printParserErrors(p.Errors())
 			continue
 		}
 
-		fmt.Fprintf(out, "%s", program.String())
-	}
-}
-
-func printParserErrors(out io.Writer, errors []error) {
-	for _, msg := range errors {
-		fmt.Fprintf(out, "\t%s\n", msg.Error())
+		output := evaluator.Eval(scope, program)
+		fmt.Println(output.Inspect())
 	}
 }

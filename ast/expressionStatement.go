@@ -12,8 +12,7 @@ type ExpressionStatement struct {
 }
 
 func (this *ExpressionStatement) statementNode()       {}
-func (this *ExpressionStatement) TokenLiteral() string { return this.Token.Literal }
-
-func (this *ExpressionStatement) String() string {
+func (this ExpressionStatement) TokenLiteral() string { return this.Token.Literal }
+func (this ExpressionStatement) String() string {
 	return fmt.Sprintf("%s;", this.Expression.String())
 }

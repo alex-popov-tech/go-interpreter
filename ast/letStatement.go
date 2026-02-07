@@ -14,8 +14,8 @@ type LetStatement struct {
 
 func (this *LetStatement) statementNode() {}
 
-func (this *LetStatement) TokenLiteral() string { return this.Token.Literal }
+func (this LetStatement) TokenLiteral() string { return this.Token.Literal }
 
-func (this *LetStatement) String() string {
+func (this LetStatement) String() string {
 	return fmt.Sprintf("let %s = %s;", this.Identifier.String(), this.Value.String())
 }

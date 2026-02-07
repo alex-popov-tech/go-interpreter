@@ -16,9 +16,9 @@ type IfExpression struct {
 
 func (this *IfExpression) expressionNode() {}
 
-func (this *IfExpression) TokenLiteral() string { return this.Token.Literal }
+func (this IfExpression) TokenLiteral() string { return this.Token.Literal }
 
-func (this *IfExpression) String() string {
+func (this IfExpression) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("if (")
 	sb.WriteString(this.Condition.String())
@@ -45,7 +45,7 @@ type ElseIfBlock struct {
 	Block     *BlockExpression
 }
 
-func (this *ElseIfBlock) String() string {
+func (this ElseIfBlock) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("else if (")
 	sb.WriteString(this.Condition.String())

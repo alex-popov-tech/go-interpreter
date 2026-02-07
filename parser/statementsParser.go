@@ -28,9 +28,7 @@ func (p *Parser) parseExpressionStatement() (*ast.ExpressionStatement, error) {
 	}
 	statement.Expression = expr
 
-	if err := p.finishStatement(expr, false); err != nil {
-		return nil, err
-	}
+	p.finishStatement()
 	return statement, nil
 }
 
@@ -63,9 +61,7 @@ func (p *Parser) parseLetStatement() (*ast.LetStatement, error) {
 	}
 	statement.Value = expr
 
-	if err := p.finishStatement(expr, true); err != nil {
-		return nil, err
-	}
+	p.finishStatement()
 	return statement, nil
 }
 
@@ -77,16 +73,15 @@ func (p *Parser) parseReturnStatement() (*ast.ReturnStatement, error) {
 	}
 	res := &ast.ReturnStatement{Token: p.currentToken}
 
-	// move to expression
-	p.nextToken()
-	expr, err := p.parseExpression(LOWEST)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse return statement: %s", err)
+	if token.SEMICOLON != p.peekToken.Type {
+		// move to expression
+		p.nextToken()
+		expr, err := p.parseExpression(LOWEST)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse return statement: %s", err)
+		}
+		res.Value = expr
 	}
-	res.Value = expr
-
-	if err := p.finishStatement(expr, true); err != nil {
-		return nil, err
-	}
+	p.finishStatement()
 	return res, nil
 }

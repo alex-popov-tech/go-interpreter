@@ -7,15 +7,18 @@ import (
 const (
 	_ int = iota
 	LOWEST
-	EQUALS      // =
+	ASSIGN      // =
+	EQUALS      // ==
 	LESSGREATER // < or >
 	SUM         // +
 	PRODUCT     // *
+	BOOL        // && or ||
 	PREFIX      // -X or !X
 	CALL        // myfunc(X)
 )
 
 var precedences = map[token.TokenType]int{
+	token.ASSIGN:   ASSIGN,
 	token.EQ:       EQUALS,
 	token.NOT_EQ:   EQUALS,
 	token.LT:       LESSGREATER,
@@ -24,6 +27,8 @@ var precedences = map[token.TokenType]int{
 	token.MINUS:    SUM,
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
+	token.AND:      BOOL,
+	token.OR:       BOOL,
 	token.LPAREN:   CALL,
 }
 

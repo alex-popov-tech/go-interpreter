@@ -10,5 +10,5 @@ type IntLiteral struct {
 }
 
 func (this *IntLiteral) expressionNode()      {}
-func (this *IntLiteral) TokenLiteral() string { return this.Token.Literal }
-func (this *IntLiteral) String() string       { return this.Token.Literal }
+func (this IntLiteral) TokenLiteral() string { return this.Token.Literal }
+func (this IntLiteral) String() string       { return this.Token.Literal }

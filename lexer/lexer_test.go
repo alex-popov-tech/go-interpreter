@@ -178,3 +178,26 @@ func TestNextToken_UnterminatedString(t *testing.T) {
 
 	verifyTokens(t, input, expected)
 }
+
+func TestNextToken_LogicalOperators(t *testing.T) {
+	input := `true && false
+	true || false
+	a && b || c`
+
+	expected := []expectedToken{
+		{token.TRUE, "true"},
+		{token.AND, "&&"},
+		{token.FALSE, "false"},
+		{token.TRUE, "true"},
+		{token.OR, "||"},
+		{token.FALSE, "false"},
+		{token.IDENTIFIER, "a"},
+		{token.AND, "&&"},
+		{token.IDENTIFIER, "b"},
+		{token.OR, "||"},
+		{token.IDENTIFIER, "c"},
+		{token.EOF, ""},
+	}
+
+	verifyTokens(t, input, expected)
+}

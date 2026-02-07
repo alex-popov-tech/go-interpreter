@@ -38,11 +38,12 @@ func New(l *lexer.Lexer) *Parser {
 	parser.prefixParseFns[token.FALSE] = parser.parseBoolLiteralExpression
 	parser.prefixParseFns[token.STRING] = parser.parseStringLiteralExpression
 	parser.prefixParseFns[token.LPAREN] = parser.parseGroupedExpression
-	parser.prefixParseFns[token.BANG] = parser.parsePrefixExpression
-	parser.prefixParseFns[token.MINUS] = parser.parsePrefixExpression
 	parser.prefixParseFns[token.IF] = parser.parseIfExpression
 	parser.prefixParseFns[token.LBRACE] = parser.parseBlockExpression
 	parser.prefixParseFns[token.FUNCTION] = parser.parseFnExpression
+	parser.prefixParseFns[token.BANG] = parser.parsePrefixExpression
+	parser.prefixParseFns[token.MINUS] = parser.parsePrefixExpression
+	parser.prefixParseFns[token.PLUS] = parser.parsePrefixExpression
 
 	parser.infixParseFns[token.PLUS] = parser.parseInfixExpression
 	parser.infixParseFns[token.MINUS] = parser.parseInfixExpression
@@ -52,6 +53,9 @@ func New(l *lexer.Lexer) *Parser {
 	parser.infixParseFns[token.NOT_EQ] = parser.parseInfixExpression
 	parser.infixParseFns[token.LT] = parser.parseInfixExpression
 	parser.infixParseFns[token.GT] = parser.parseInfixExpression
+	parser.infixParseFns[token.AND] = parser.parseInfixExpression
+	parser.infixParseFns[token.OR] = parser.parseInfixExpression
+	parser.infixParseFns[token.ASSIGN] = parser.parseInfixExpression
 
 	parser.infixParseFns[token.LPAREN] = parser.parseCallExpression
 

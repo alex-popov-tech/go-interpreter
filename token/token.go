@@ -49,6 +49,8 @@ const (
 	ASTERISK = "*"
 	EQ       = "=="
 	NOT_EQ   = "!="
+	AND      = "&&"
+	OR       = "||"
 
 	// delimiters
 	COMMA     = ","

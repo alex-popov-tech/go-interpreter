@@ -99,6 +99,8 @@ func (p *Parser) parseIfExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("could not parse if statement body block: %s", err)
 	}
 	res.IfBlock = ifBlock.(*ast.BlockExpression)
+	// advance over '}'
+	p.nextToken()
 
 	// parsing else-if blocks
 	for p.currentToken.Type == token.ELSE && p.peekToken.Type == token.IF {
@@ -133,6 +135,8 @@ func (p *Parser) parseIfExpression() (ast.Expression, error) {
 		if err != nil {
 			return nil, fmt.Errorf("could not parse if statement else-if body block: %s", err)
 		}
+		// advance over '}'
+		p.nextToken()
 		elseIfBlock.Block = block.(*ast.BlockExpression)
 		res.ElseIfBlocks = append(res.ElseIfBlocks, elseIfBlock)
 	}
@@ -152,6 +156,8 @@ func (p *Parser) parseIfExpression() (ast.Expression, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse if statement else body block: %s", err)
 	}
+	// advance over '}'
+	p.nextToken()
 	res.ElseBlock = elseBlock.(*ast.BlockExpression)
 
 	return &res, nil
@@ -180,15 +186,9 @@ func (p *Parser) parseBlockExpression() (ast.Expression, error) {
 	}
 	res.Statements = statements
 
-	if token.EOF == p.currentToken.Type {
+	if token.RBRACE != p.currentToken.Type {
 		return nil, fmt.Errorf("block expression is missing closing '}'")
 	}
-
-	// go over '}'
-	if token.RBRACE != p.currentToken.Type {
-		return nil, fmt.Errorf("expected %s, got %s", token.RBRACE, p.currentToken.Type)
-	}
-	p.nextToken()
 
 	return &res, nil
 }
@@ -196,6 +196,7 @@ func (p *Parser) parseBlockExpression() (ast.Expression, error) {
 func (p *Parser) parseFnExpression() (ast.Expression, error) {
 	defer untrace(trace("parseFnExpression"))
 	res := &ast.FnExpression{Token: p.currentToken}
+	arguments := []*ast.Identifier{}
 
 	// go over 'fn' to '('
 	p.nextToken()
@@ -203,10 +204,11 @@ func (p *Parser) parseFnExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("expected %s, got %s", token.LPAREN, p.currentToken.Type)
 	}
 
-	arguments := []*ast.Identifier{}
-	// go from '(' to first argument or ')'
-	p.nextToken()
 	for token.RPAREN != p.currentToken.Type && token.EOF != p.currentToken.Type {
+		p.nextToken()
+		if token.RPAREN == p.currentToken.Type {
+			break
+		}
 		if token.IDENTIFIER != p.currentToken.Type {
 			return nil, fmt.Errorf("expected %s, got %s", token.IDENTIFIER, p.currentToken.Type)
 		}
@@ -215,10 +217,6 @@ func (p *Parser) parseFnExpression() (ast.Expression, error) {
 			&ast.Identifier{Token: p.currentToken, Value: p.currentToken.Literal},
 		)
 
-		// if next token is ',' - go over it
-		if token.COMMA == p.peekToken.Type {
-			p.nextToken()
-		}
 		p.nextToken()
 	}
 	res.Arguments = arguments

@@ -15,9 +15,9 @@ type FnExpression struct {
 
 func (it FnExpression) expressionNode() {}
 
-func (it *FnExpression) TokenLiteral() string { return it.Token.Literal }
+func (it FnExpression) TokenLiteral() string { return it.Token.Literal }
 
-func (it *FnExpression) String() string {
+func (it FnExpression) String() string {
 	args := []string{}
 	for _, arg := range it.Arguments {
 		args = append(args, arg.String())

@@ -8,7 +8,7 @@ type Identifier struct {
 }
 
 func (this *Identifier) expressionNode()      {}
-func (this *Identifier) TokenLiteral() string { return this.Token.Literal }
-func (this *Identifier) String() string {
+func (this Identifier) TokenLiteral() string { return this.Token.Literal }
+func (this Identifier) String() string {
 	return this.Value
 }

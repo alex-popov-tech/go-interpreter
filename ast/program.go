@@ -9,11 +9,11 @@ type Program struct {
 	Statements []Statement
 }
 
-func (this *Program) TokenLiteral() string {
+func (this Program) TokenLiteral() string {
 	return ""
 }
 
-func (this *Program) String() string {
+func (this Program) String() string {
 	var buf bytes.Buffer
 
 	for _, s := range this.Statements {

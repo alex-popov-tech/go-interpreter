@@ -1,14 +1,9 @@
 package main
 
 import (
-	"os"
-
-	"monkey/repl"
+	"monkey/cmd"
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "repl" {
-		os.Setenv("TRACE", "true")
-		repl.Start(os.Stdin, os.Stdout)
-	}
+	cmd.Cmd()
 }

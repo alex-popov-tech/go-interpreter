@@ -13,9 +13,9 @@ type BlockExpression struct {
 
 func (be BlockExpression) expressionNode() {}
 
-func (be *BlockExpression) TokenLiteral() string { return be.Token.Literal }
+func (be BlockExpression) TokenLiteral() string { return be.Token.Literal }
 
-func (be *BlockExpression) String() string {
+func (be BlockExpression) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("{")
 	for _, s := range be.Statements {
