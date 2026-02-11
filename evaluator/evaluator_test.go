@@ -1016,3 +1016,342 @@ func TestClosureEvaluation(t *testing.T) {
 		assert.Equal(t, int64(3), result.(*object.IntObject).Value)
 	})
 }
+
+// =============================================================================
+// Index Expression Tests
+// =============================================================================
+
+func TestArrayIndexExpression(t *testing.T) {
+	intTests := []struct {
+		input    string
+		expected int64
+	}{
+		{"[1, 2, 3][0];", 1},
+		{"[1, 2, 3][2];", 3},
+		{"[10, 20, 30][1 + 1];", 30},
+		{"let arr = [1, 2, 3]; arr[1];", 2},
+		{"let i = 0; [10, 20][i];", 10},
+	}
+
+	for _, tt := range intTests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := evaluate(tt.input)
+			require.IsType(t, &object.IntObject{}, result)
+			assert.Equal(t, tt.expected, result.(*object.IntObject).Value)
+		})
+	}
+}
+
+func TestStringIndexExpression(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"'hello'[0];", "h"},
+		{"'hello'[4];", "o"},
+		{"'hello'[2];", "l"},
+		{"let s = 'abc'; s[1];", "b"},
+		{"let i = 2; 'xyz'[i];", "z"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := evaluate(tt.input)
+			require.IsType(t, &object.StringObject{}, result)
+			assert.Equal(t, tt.expected, result.(*object.StringObject).Value)
+		})
+	}
+}
+
+func TestHashIndexExpression(t *testing.T) {
+	t.Run("string key returns int", func(t *testing.T) {
+		result := evaluate("#{'a': 1, 'b': 2}['a'];")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(1), result.(*object.IntObject).Value)
+	})
+
+	t.Run("int key returns string", func(t *testing.T) {
+		result := evaluate("#{1: 'one', 2: 'two'}[1];")
+		require.IsType(t, &object.StringObject{}, result)
+		assert.Equal(t, "one", result.(*object.StringObject).Value)
+	})
+
+	t.Run("bool key returns string", func(t *testing.T) {
+		result := evaluate("#{true: 'yes', false: 'no'}[true];")
+		require.IsType(t, &object.StringObject{}, result)
+		assert.Equal(t, "yes", result.(*object.StringObject).Value)
+	})
+
+	t.Run("hash stored in variable", func(t *testing.T) {
+		result := evaluate("let m = #{'x': 10}; m['x'];")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(10), result.(*object.IntObject).Value)
+	})
+
+	t.Run("variable as key", func(t *testing.T) {
+		result := evaluate("let k = 'a'; #{'a': 42}[k];")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(42), result.(*object.IntObject).Value)
+	})
+}
+
+func TestIndexExpressionErrors(t *testing.T) {
+	t.Run("index on non-indexable type", func(t *testing.T) {
+		result := evaluate("5[0];")
+		assertError(t, result, "can index only")
+	})
+
+	t.Run("non-int index on array", func(t *testing.T) {
+		result := evaluate("[1, 2, 3][true];")
+		assertError(t, result, "index must be INT")
+	})
+
+	t.Run("non-int index on string", func(t *testing.T) {
+		result := evaluate("'hello'[true];")
+		assertError(t, result, "index must be INT")
+	})
+
+	t.Run("invalid key type on hash", func(t *testing.T) {
+		result := evaluate("#{'a': 1}[[1, 2]];")
+		assertError(t, result, "index must be")
+	})
+}
+
+func TestIndexExpressionMissingKey(t *testing.T) {
+	t.Run("hash missing string key returns null", func(t *testing.T) {
+		result := evaluate("#{'a': 1}['z'];")
+		require.IsType(t, object.NullObject{}, result)
+	})
+
+	t.Run("hash missing int key returns null", func(t *testing.T) {
+		result := evaluate("#{1: 'one'}[99];")
+		require.IsType(t, object.NullObject{}, result)
+	})
+
+	t.Run("hash missing bool key returns null", func(t *testing.T) {
+		result := evaluate("#{true: 'yes'}[false];")
+		require.IsType(t, object.NullObject{}, result)
+	})
+}
+
+func TestIndexExpressionOutOfBounds(t *testing.T) {
+	t.Run("array index too large", func(t *testing.T) {
+		result := evaluate("[1, 2, 3][5];")
+		assertError(t, result, "out of bounds")
+	})
+
+	t.Run("array negative index", func(t *testing.T) {
+		result := evaluate("[1, 2, 3][-1];")
+		assertError(t, result, "out of bounds")
+	})
+
+	t.Run("string index too large", func(t *testing.T) {
+		result := evaluate("'hello'[10];")
+		assertError(t, result, "out of bounds")
+	})
+
+	t.Run("string negative index", func(t *testing.T) {
+		result := evaluate("'hello'[-1];")
+		assertError(t, result, "out of bounds")
+	})
+}
+
+// =============================================================================
+// Builtin Function Tests: first, last, rest, push
+// =============================================================================
+
+func TestFirstBuiltin(t *testing.T) {
+	t.Run("returns first element", func(t *testing.T) {
+		result := evaluate("first([1, 2, 3]);")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(1), result.(*object.IntObject).Value)
+	})
+
+	t.Run("first of single-element array", func(t *testing.T) {
+		result := evaluate("first([42]);")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(42), result.(*object.IntObject).Value)
+	})
+
+	t.Run("empty array returns null", func(t *testing.T) {
+		result := evaluate("first([]);")
+		require.IsType(t, object.NullObject{}, result)
+	})
+
+	t.Run("first of string array", func(t *testing.T) {
+		result := evaluate("first(['hello', 'world']);")
+		require.IsType(t, &object.StringObject{}, result)
+		assert.Equal(t, "hello", result.(*object.StringObject).Value)
+	})
+
+	t.Run("error on non-array argument", func(t *testing.T) {
+		result := evaluate("first(1);")
+		assertError(t, result, "ARRAY")
+	})
+
+	t.Run("error on wrong number of arguments", func(t *testing.T) {
+		result := evaluate("first([1], [2]);")
+		assertError(t, result, "exactly one argument")
+	})
+
+	t.Run("error on no arguments", func(t *testing.T) {
+		result := evaluate("first();")
+		assertError(t, result, "exactly one argument")
+	})
+}
+
+func TestLastBuiltin(t *testing.T) {
+	t.Run("returns last element", func(t *testing.T) {
+		result := evaluate("last([1, 2, 3]);")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(3), result.(*object.IntObject).Value)
+	})
+
+	t.Run("last of single-element array", func(t *testing.T) {
+		result := evaluate("last([42]);")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(42), result.(*object.IntObject).Value)
+	})
+
+	t.Run("empty array returns null", func(t *testing.T) {
+		result := evaluate("last([]);")
+		require.IsType(t, object.NullObject{}, result)
+	})
+
+	t.Run("error on non-array argument", func(t *testing.T) {
+		result := evaluate("last('hello');")
+		assertError(t, result, "ARRAY")
+	})
+
+	t.Run("error on wrong number of arguments", func(t *testing.T) {
+		result := evaluate("last([1], [2]);")
+		assertError(t, result, "exactly one argument")
+	})
+}
+
+func TestRestBuiltin(t *testing.T) {
+	t.Run("returns all but first element", func(t *testing.T) {
+		result := evaluate("rest([1, 2, 3]);")
+		require.IsType(t, &object.ArrayObject{}, result)
+		arr := result.(*object.ArrayObject)
+		require.Len(t, arr.Items, 2)
+		assert.Equal(t, int64(2), arr.Items[0].(*object.IntObject).Value)
+		assert.Equal(t, int64(3), arr.Items[1].(*object.IntObject).Value)
+	})
+
+	t.Run("single-element array returns empty array", func(t *testing.T) {
+		result := evaluate("rest([1]);")
+		require.IsType(t, &object.ArrayObject{}, result)
+		arr := result.(*object.ArrayObject)
+		assert.Empty(t, arr.Items)
+	})
+
+	t.Run("empty array returns empty array", func(t *testing.T) {
+		result := evaluate("rest([]);")
+		require.IsType(t, &object.ArrayObject{}, result)
+		assert.Empty(t, result.(*object.ArrayObject).Items)
+	})
+
+	t.Run("does not mutate original array", func(t *testing.T) {
+		result := evaluate("let a = [1, 2, 3]; rest(a); first(a);")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(1), result.(*object.IntObject).Value)
+	})
+
+	t.Run("error on non-array argument", func(t *testing.T) {
+		result := evaluate("rest(5);")
+		assertError(t, result, "ARRAY")
+	})
+
+	t.Run("error on wrong number of arguments", func(t *testing.T) {
+		result := evaluate("rest([1], [2]);")
+		assertError(t, result, "exactly one argument")
+	})
+}
+
+func TestPushBuiltin(t *testing.T) {
+	t.Run("appends element to array", func(t *testing.T) {
+		result := evaluate("push([1, 2], 3);")
+		require.IsType(t, &object.ArrayObject{}, result)
+		arr := result.(*object.ArrayObject)
+		require.Len(t, arr.Items, 3)
+		assert.Equal(t, int64(1), arr.Items[0].(*object.IntObject).Value)
+		assert.Equal(t, int64(2), arr.Items[1].(*object.IntObject).Value)
+		assert.Equal(t, int64(3), arr.Items[2].(*object.IntObject).Value)
+	})
+
+	t.Run("push to empty array", func(t *testing.T) {
+		result := evaluate("push([], 1);")
+		require.IsType(t, &object.ArrayObject{}, result)
+		arr := result.(*object.ArrayObject)
+		require.Len(t, arr.Items, 1)
+		assert.Equal(t, int64(1), arr.Items[0].(*object.IntObject).Value)
+	})
+
+	t.Run("push string to array", func(t *testing.T) {
+		result := evaluate("push([1, 2], 'three');")
+		require.IsType(t, &object.ArrayObject{}, result)
+		arr := result.(*object.ArrayObject)
+		require.Len(t, arr.Items, 3)
+		assert.Equal(t, "three", arr.Items[2].(*object.StringObject).Value)
+	})
+
+	t.Run("does not mutate original array", func(t *testing.T) {
+		result := evaluate("let a = [1, 2]; push(a, 3); last(a);")
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(2), result.(*object.IntObject).Value)
+	})
+
+	t.Run("error on non-array first argument", func(t *testing.T) {
+		result := evaluate("push(1, 2);")
+		assertError(t, result, "ARRAY")
+	})
+
+	t.Run("error on wrong number of arguments", func(t *testing.T) {
+		result := evaluate("push([1]);")
+		assertError(t, result, "exactly two arguments")
+	})
+
+	t.Run("error on too many arguments", func(t *testing.T) {
+		result := evaluate("push([1], 2, 3);")
+		assertError(t, result, "exactly two arguments")
+	})
+}
+
+func TestBuiltinFunctionalPatterns(t *testing.T) {
+	t.Run("recursive map using builtins", func(t *testing.T) {
+		result := evaluate(`
+			let map = fn(arr, f) {
+				if (len(arr) == 0) {
+					[];
+				} else {
+					push(map(rest(arr), f), f(first(arr)));
+				};
+			};
+			let double = fn(x) { x * 2; };
+			map([1, 2, 3], double);
+		`)
+		require.IsType(t, &object.ArrayObject{}, result)
+		arr := result.(*object.ArrayObject)
+		require.Len(t, arr.Items, 3)
+		assert.Equal(t, int64(6), arr.Items[0].(*object.IntObject).Value)
+		assert.Equal(t, int64(4), arr.Items[1].(*object.IntObject).Value)
+		assert.Equal(t, int64(2), arr.Items[2].(*object.IntObject).Value)
+	})
+
+	t.Run("recursive reduce using builtins", func(t *testing.T) {
+		result := evaluate(`
+			let reduce = fn(arr, acc, f) {
+				if (len(arr) == 0) {
+					acc;
+				} else {
+					reduce(rest(arr), f(acc, first(arr)), f);
+				};
+			};
+			let sum = fn(a, b) { a + b; };
+			reduce([1, 2, 3, 4], 0, sum);
+		`)
+		require.IsType(t, &object.IntObject{}, result)
+		assert.Equal(t, int64(10), result.(*object.IntObject).Value)
+	})
+}

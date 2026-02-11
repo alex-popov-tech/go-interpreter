@@ -1,3 +1,5 @@
+<img alt="go-interpreter heading image" src="https://github.com/user-attachments/assets/e69ed722-8166-48de-9b6f-9ab264963328" />
+
 # Go Interpreter
 
 A Monkey programming language interpreter written in Go, following the book **["Writing An Interpreter In Go"](https://interpreterbook.com/)** by Thorsten Ball.

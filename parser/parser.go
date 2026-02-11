@@ -41,6 +41,9 @@ func New(l *lexer.Lexer) *Parser {
 	parser.prefixParseFns[token.IF] = parser.parseIfExpression
 	parser.prefixParseFns[token.LBRACE] = parser.parseBlockExpression
 	parser.prefixParseFns[token.FUNCTION] = parser.parseFnExpression
+	parser.prefixParseFns[token.LBRKT] = parser.parseArrayExpression
+	parser.prefixParseFns[token.HASH] = parser.parseHashExpression
+
 	parser.prefixParseFns[token.BANG] = parser.parsePrefixExpression
 	parser.prefixParseFns[token.MINUS] = parser.parsePrefixExpression
 	parser.prefixParseFns[token.PLUS] = parser.parsePrefixExpression
@@ -58,6 +61,7 @@ func New(l *lexer.Lexer) *Parser {
 	parser.infixParseFns[token.ASSIGN] = parser.parseInfixExpression
 
 	parser.infixParseFns[token.LPAREN] = parser.parseCallExpression
+	parser.infixParseFns[token.LBRKT] = parser.parseIndexExpression
 
 	// establish a pointers
 	parser.currentToken = l.NextToken()

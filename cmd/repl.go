@@ -22,7 +22,7 @@ func Repl() {
 	fmt.Println("Hello bro! This is the Monkey programming language!")
 	fmt.Println("Feel free to type in commands:")
 	for {
-		fmt.Fprintf(out, PROMPT)
+		fmt.Fprint(out, PROMPT)
 		scanned := scanner.Scan()
 		if !scanned {
 			return

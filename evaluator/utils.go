@@ -47,24 +47,6 @@ func isOneOfTypes(val object.Object, types ...object.ObjectType) bool {
 	return false
 }
 
-func isArithmeticOperator(operator string) bool {
-	switch operator {
-	case "+", "-", "*", "/":
-		return true
-	default:
-		return false
-	}
-}
-
-func isBoolOperator(operator string) bool {
-	switch operator {
-	case "&&", "||", "==", "!=":
-		return true
-	default:
-		return false
-	}
-}
-
 func makeIncorrectOperationError(operator string, left, right object.Object) *object.ErrorObject {
 	return &object.ErrorObject{
 		Message: &object.StringObject{
@@ -100,4 +82,12 @@ func resolveIdentIfNeeded(scope *object.Scope, o object.Object) object.Object {
 		return res
 	}
 	return o
+}
+
+func types(objects []object.Object) []object.ObjectType {
+	res := []object.ObjectType{}
+	for _, o := range objects {
+		res = append(res, o.Type())
+	}
+	return res
 }

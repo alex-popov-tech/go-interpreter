@@ -201,3 +201,37 @@ func TestNextToken_LogicalOperators(t *testing.T) {
 
 	verifyTokens(t, input, expected)
 }
+
+func TestNextToken_Brackets(t *testing.T) {
+	input := `[0]
+	["hello"]
+	`
+
+	expected := []expectedToken{
+		{token.LBRKT, "["},
+		{token.INT, "0"},
+		{token.RBRKT, "]"},
+		{token.LBRKT, "["},
+		{token.STRING, "hello"},
+		{token.RBRKT, "]"},
+		{token.EOF, ""},
+	}
+
+	verifyTokens(t, input, expected)
+}
+
+func TestNextToken_Hash(t *testing.T) {
+	input := "#{ foo: bar }"
+
+	expected := []expectedToken{
+		{token.HASH, "#"},
+		{token.LBRACE, "{"},
+		{token.IDENTIFIER, "foo"},
+		{token.COLON, ":"},
+		{token.IDENTIFIER, "bar"},
+		{token.RBRACE, "}"},
+		{token.EOF, ""},
+	}
+
+	verifyTokens(t, input, expected)
+}

@@ -254,6 +254,127 @@ func TestCallExpression(t *testing.T) {
 	require.Equal(t, "c", callExpr.Arguments[2].(*ast.Identifier).Value)
 }
 
+func TestIndexExpression_Identifier(t *testing.T) {
+	statements, errors := parseStatements("foo[1]")
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	require.IsType(t, &ast.ExpressionStatement{}, expressionStatement)
+	indexExpr := expressionStatement.Expression.(*ast.IndexExpression)
+	require.IsType(t, &ast.IndexExpression{}, indexExpr)
+
+	// Verify function identifier
+	ident := indexExpr.Identifier.(*ast.Identifier)
+	require.Equal(t, "foo", ident.Value)
+
+	val := indexExpr.IndexExpression.(*ast.IntLiteral)
+	require.Equal(t, int64(1), val.Value)
+}
+
+func TestIndexExpression_ArrayLiteral(t *testing.T) {
+	statements, errors := parseStatements("[1, 2, 3][0]")
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	indexExpr := expressionStatement.Expression.(*ast.IndexExpression)
+	require.IsType(t, &ast.IndexExpression{}, indexExpr)
+
+	// Verify left side is an array literal
+	arrExpr := indexExpr.Identifier.(*ast.ArrayExpression)
+	require.Len(t, arrExpr.Elements, 3)
+	require.Equal(t, int64(1), arrExpr.Elements[0].(*ast.IntLiteral).Value)
+	require.Equal(t, int64(2), arrExpr.Elements[1].(*ast.IntLiteral).Value)
+	require.Equal(t, int64(3), arrExpr.Elements[2].(*ast.IntLiteral).Value)
+
+	// Verify index
+	idx := indexExpr.IndexExpression.(*ast.IntLiteral)
+	require.Equal(t, int64(0), idx.Value)
+}
+
+func TestIndexExpression_CallExpressionIndex(t *testing.T) {
+	statements, errors := parseStatements("foo[bar()]")
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	indexExpr := expressionStatement.Expression.(*ast.IndexExpression)
+	require.IsType(t, &ast.IndexExpression{}, indexExpr)
+
+	// Verify array identifier
+	ident := indexExpr.Identifier.(*ast.Identifier)
+	require.Equal(t, "foo", ident.Value)
+
+	// Verify index is a call expression
+	callExpr := indexExpr.IndexExpression.(*ast.CallExpression)
+	require.IsType(t, &ast.CallExpression{}, callExpr)
+	fnIdent := callExpr.FnIdentifier.(*ast.Identifier)
+	require.Equal(t, "bar", fnIdent.Value)
+	require.Empty(t, callExpr.Arguments)
+}
+
+func TestIndexExpression_InfixIndex(t *testing.T) {
+	statements, errors := parseStatements("foo[a + 1]")
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	indexExpr := expressionStatement.Expression.(*ast.IndexExpression)
+	require.IsType(t, &ast.IndexExpression{}, indexExpr)
+
+	// Verify array identifier
+	ident := indexExpr.Identifier.(*ast.Identifier)
+	require.Equal(t, "foo", ident.Value)
+
+	// Verify index is an infix expression: a + 1
+	infixExpr := indexExpr.IndexExpression.(*ast.InfixExpression)
+	require.IsType(t, &ast.InfixExpression{}, infixExpr)
+	require.Equal(t, "a", infixExpr.Left.(*ast.Identifier).Value)
+	require.Equal(t, "+", infixExpr.Operator)
+	require.Equal(t, int64(1), infixExpr.Right.(*ast.IntLiteral).Value)
+}
+
+func TestIndexExpression_Nested(t *testing.T) {
+	statements, errors := parseStatements("foo[0][1]")
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+
+	// Outer: (...)[1]
+	outerIndex := expressionStatement.Expression.(*ast.IndexExpression)
+	require.IsType(t, &ast.IndexExpression{}, outerIndex)
+	require.Equal(t, int64(1), outerIndex.IndexExpression.(*ast.IntLiteral).Value)
+
+	// Inner: foo[0]
+	innerIndex := outerIndex.Identifier.(*ast.IndexExpression)
+	require.IsType(t, &ast.IndexExpression{}, innerIndex)
+	require.Equal(t, "foo", innerIndex.Identifier.(*ast.Identifier).Value)
+	require.Equal(t, int64(0), innerIndex.IndexExpression.(*ast.IntLiteral).Value)
+}
+
+func TestIndexExpression_CallResultIndexed(t *testing.T) {
+	statements, errors := parseStatements("bar()[0]")
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	indexExpr := expressionStatement.Expression.(*ast.IndexExpression)
+	require.IsType(t, &ast.IndexExpression{}, indexExpr)
+
+	// Verify left side is a call expression
+	callExpr := indexExpr.Identifier.(*ast.CallExpression)
+	require.IsType(t, &ast.CallExpression{}, callExpr)
+	fnIdent := callExpr.FnIdentifier.(*ast.Identifier)
+	require.Equal(t, "bar", fnIdent.Value)
+	require.Empty(t, callExpr.Arguments)
+
+	// Verify index
+	idx := indexExpr.IndexExpression.(*ast.IntLiteral)
+	require.Equal(t, int64(0), idx.Value)
+}
+
 func TestEmptyCallExpression(t *testing.T) {
 	statements, errors := parseStatements(`foo();`)
 	require.Empty(t, errors)
@@ -415,6 +536,78 @@ func TestBoolLiteralExpression(t *testing.T) {
 	}
 }
 
+func TestEmptyArrayExpression(t *testing.T) {
+	statements, errors := parseStatements(`[];`)
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	arrExpr := expressionStatement.Expression.(*ast.ArrayExpression)
+	require.IsType(t, &ast.ArrayExpression{}, arrExpr)
+
+	require.Empty(t, arrExpr.Elements)
+}
+
+func TestArrayExpressionSingleArg(t *testing.T) {
+	statements, errors := parseStatements(`[ a ];`)
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	arrExpr := expressionStatement.Expression.(*ast.ArrayExpression)
+	require.IsType(t, &ast.ArrayExpression{}, arrExpr)
+
+	require.Len(t, arrExpr.Elements, 1)
+	require.IsType(t, &ast.Identifier{}, arrExpr.Elements[0])
+	require.IsType(t, &ast.Identifier{}, arrExpr.Elements[0])
+	require.Equal(t, "a", arrExpr.Elements[0].(*ast.Identifier).Value)
+}
+
+func TestArrayExpressionMultipleItems(t *testing.T) {
+	statements, errors := parseStatements(`[a, 1, true];`)
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	arrExpr := expressionStatement.Expression.(*ast.ArrayExpression)
+	require.IsType(t, &ast.ArrayExpression{}, arrExpr)
+
+	require.Len(t, arrExpr.Elements, 3)
+
+	require.IsType(t, &ast.Identifier{}, arrExpr.Elements[0])
+	require.Equal(t, "a", arrExpr.Elements[0].(*ast.Identifier).Value)
+
+	require.IsType(t, &ast.IntLiteral{}, arrExpr.Elements[1])
+	require.Equal(t, int64(1), arrExpr.Elements[1].(*ast.IntLiteral).Value)
+
+	require.IsType(t, &ast.BoolLiteral{}, arrExpr.Elements[2])
+	require.Equal(t, true, arrExpr.Elements[2].(*ast.BoolLiteral).Value)
+}
+
+func TestEmptyHashExpression(t *testing.T) {
+	statements, errors := parseStatements("#{}")
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	hashExpr := expressionStatement.Expression.(*ast.HashExpression)
+	require.IsType(t, &ast.HashExpression{}, hashExpr)
+
+	require.Empty(t, hashExpr.Map)
+}
+
+func TestSingleKeyHashExpression(t *testing.T) {
+	statements, errors := parseStatements("#{foo:bar}")
+	require.Empty(t, errors)
+
+	require.Len(t, statements, 1)
+	expressionStatement := statements[0].(*ast.ExpressionStatement)
+	hashExpr := expressionStatement.Expression.(*ast.HashExpression)
+	require.IsType(t, &ast.HashExpression{}, hashExpr)
+	require.Len(t, hashExpr.Map, 1)
+	require.Equal(t, "#{foo:bar}", hashExpr.String())
+}
+
 func TestPrefixExpressions(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -551,6 +744,12 @@ func TestOperatorPrecedence(t *testing.T) {
 		{"x = 5 + 3;", "(x = (5 + 3));"},
 		{"x = y = 5;", "(x = (y = 5));"},
 		{"x = 5 * 3 + 2;", "(x = ((5 * 3) + 2));"},
+
+		// Index expressions (highest precedence)
+		{"a + b[0];", "(a + b[0]);"},
+		{"a * b[0];", "(a * b[0]);"},
+		{"bar()[0];", "bar()[0];"},
+		{"foo[0][1];", "foo[0][1];"},
 	}
 
 	for _, tt := range tests {
@@ -572,4 +771,24 @@ func TestWhitespaceOnlyInput(t *testing.T) {
 	statements, errors := parseStatements("   \n\t  ")
 	require.Empty(t, errors)
 	require.Empty(t, statements)
+}
+
+func TestIndexExpression_MissingClosingBracket(t *testing.T) {
+	_, errors := parseStatements("foo[1")
+	assert.NotEmpty(t, errors, "expected parser error for missing closing ']'")
+}
+
+func TestIndexExpression_EmptyIndex(t *testing.T) {
+	_, errors := parseStatements("foo[]")
+	assert.NotEmpty(t, errors, "expected parser error for empty index expression")
+}
+
+func TestIndexExpression_ArrayLiteralMissingClosingBracket(t *testing.T) {
+	_, errors := parseStatements("[1, 2, 3][0")
+	assert.NotEmpty(t, errors, "expected parser error for missing closing ']' on index")
+}
+
+func TestIndexExpression_MissingClosingBracketWithTrailing(t *testing.T) {
+	_, errors := parseStatements("foo[1 + 2")
+	assert.NotEmpty(t, errors, "expected parser error for missing closing ']' with infix index")
 }

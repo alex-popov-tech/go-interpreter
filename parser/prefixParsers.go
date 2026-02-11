@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 
 	"monkey/ast"
@@ -99,66 +100,58 @@ func (p *Parser) parseIfExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("could not parse if statement body block: %s", err)
 	}
 	res.IfBlock = ifBlock.(*ast.BlockExpression)
-	// advance over '}'
-	p.nextToken()
+	// currentToken = '}', do NOT advance — let the caller's finishStatement handle it
 
-	// parsing else-if blocks
-	for p.currentToken.Type == token.ELSE && p.peekToken.Type == token.IF {
-		elseIfBlock := &ast.ElseIfBlock{Token: p.currentToken}
+	// parsing else-if and else blocks by checking peekToken
+	for p.peekToken.Type == token.ELSE {
+		p.nextToken() // advance from '}' to 'else'
 
-		if token.ELSE != p.currentToken.Type {
-			return nil, fmt.Errorf("expected %s, got %s", token.ELSE, p.currentToken.Type)
-		}
-		p.nextToken() // proceed from 'else' to 'if'
-		if token.IF != p.currentToken.Type {
-			return nil, fmt.Errorf("expected %s, got %s", token.IF, p.currentToken.Type)
-		}
-		p.nextToken() // proceed from 'if' to '('
+		if p.peekToken.Type == token.IF {
+			// else-if block
+			elseIfBlock := &ast.ElseIfBlock{Token: p.currentToken}
 
-		if token.LPAREN != p.currentToken.Type {
-			return nil, fmt.Errorf("expected %s, got %s", token.LPAREN, p.currentToken.Type)
-		}
-		expr, err := p.parseGroupedExpression()
-		if err != nil {
-			return nil, fmt.Errorf("could not parse if statement else-if condition: %s", err)
-		}
-		elseIfBlock.Condition = expr
+			p.nextToken() // proceed from 'else' to 'if'
+			p.nextToken() // proceed from 'if' to '('
 
-		// proceed to '{'
-		p.nextToken()
-		if token.LBRACE != p.currentToken.Type {
-			return nil, fmt.Errorf("expected %s, got %s", token.LBRACE, p.currentToken.Type)
-		}
+			if token.LPAREN != p.currentToken.Type {
+				return nil, fmt.Errorf("expected %s, got %s", token.LPAREN, p.currentToken.Type)
+			}
+			expr, err := p.parseGroupedExpression()
+			if err != nil {
+				return nil, fmt.Errorf("could not parse if statement else-if condition: %s", err)
+			}
+			elseIfBlock.Condition = expr
 
-		// parse 'else-if' block body
-		block, err := p.parseBlockExpression()
-		if err != nil {
-			return nil, fmt.Errorf("could not parse if statement else-if body block: %s", err)
+			// proceed to '{'
+			p.nextToken()
+			if token.LBRACE != p.currentToken.Type {
+				return nil, fmt.Errorf("expected %s, got %s", token.LBRACE, p.currentToken.Type)
+			}
+
+			// parse 'else-if' block body
+			block, err := p.parseBlockExpression()
+			if err != nil {
+				return nil, fmt.Errorf("could not parse if statement else-if body block: %s", err)
+			}
+			// currentToken = '}', do NOT advance
+			elseIfBlock.Block = block.(*ast.BlockExpression)
+			res.ElseIfBlocks = append(res.ElseIfBlocks, elseIfBlock)
+		} else {
+			// plain else block — proceed to '{'
+			p.nextToken()
+			if token.LBRACE != p.currentToken.Type {
+				return nil, fmt.Errorf("expected %s, got %s", token.LBRACE, p.currentToken.Type)
+			}
+
+			elseBlock, err := p.parseBlockExpression()
+			if err != nil {
+				return nil, fmt.Errorf("could not parse if statement else body block: %s", err)
+			}
+			// currentToken = '}', do NOT advance
+			res.ElseBlock = elseBlock.(*ast.BlockExpression)
+			break // no more blocks after plain else
 		}
-		// advance over '}'
-		p.nextToken()
-		elseIfBlock.Block = block.(*ast.BlockExpression)
-		res.ElseIfBlocks = append(res.ElseIfBlocks, elseIfBlock)
 	}
-
-	// if there is no 'else' block - return
-	if token.ELSE != p.currentToken.Type {
-		return &res, nil
-	}
-
-	// proceed to '{' of 'else' block
-	p.nextToken()
-	if token.LBRACE != p.currentToken.Type {
-		return nil, fmt.Errorf("expected %s, got %s", token.LBRACE, p.currentToken.Type)
-	}
-
-	elseBlock, err := p.parseBlockExpression()
-	if err != nil {
-		return nil, fmt.Errorf("could not parse if statement else body block: %s", err)
-	}
-	// advance over '}'
-	p.nextToken()
-	res.ElseBlock = elseBlock.(*ast.BlockExpression)
 
 	return &res, nil
 }
@@ -236,6 +229,93 @@ func (p *Parser) parseFnExpression() (ast.Expression, error) {
 		return nil, fmt.Errorf("could not parse fn statement body block: %s", err)
 	}
 	res.Body, _ = (body).(*ast.BlockExpression)
+
+	return res, nil
+}
+
+func (p *Parser) parseArrayExpression() (ast.Expression, error) {
+	defer untrace(trace("parseArrayExpression"))
+	res := &ast.ArrayExpression{Token: p.currentToken, Elements: []ast.Expression{}}
+
+	// if its '[]' - empty array early return
+	if token.RBRKT == p.peekToken.Type {
+		p.nextToken()
+		return res, nil
+	}
+
+	// parse first expression
+	// go over '[' to 'first expression'
+	p.nextToken()
+	for token.RBRKT != p.currentToken.Type && token.EOF != p.currentToken.Type {
+		expression, err := p.parseExpression(LOWEST)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse array expression: %s", err)
+		}
+		res.Elements = append(res.Elements, expression)
+		p.nextToken()
+		if token.COMMA == p.currentToken.Type {
+			p.nextToken()
+		}
+	}
+
+	// it can be EOF or ']'
+	if token.EOF == p.currentToken.Type {
+		return nil, fmt.Errorf("array expression is missing closing ')'")
+	}
+
+	return res, nil
+}
+
+func (p *Parser) parseHashExpression() (ast.Expression, error) {
+	defer untrace(trace("parseHashExpression"))
+	res := &ast.HashExpression{Token: p.currentToken, Map: map[ast.Expression]ast.Expression{}}
+
+	// go from '#' over to '{'
+	if token.LBRKT == p.peekToken.Type {
+		return nil, errors.New("missing '{' after '#' in hash expression")
+	}
+	p.nextToken()
+
+	// if its '#{}' - empty hash early return
+	if token.RBRKT == p.peekToken.Type {
+		return res, nil
+	}
+	// go from '{' over to first expression
+	p.nextToken()
+
+	for token.RBRACE != p.currentToken.Type && token.EOF != p.currentToken.Type {
+		// parse key expression
+		left, err := p.parseExpression(LOWEST)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse hash expression's key: %s", err)
+		}
+
+		// go over ':' to value expression
+		if token.COLON != p.peekToken.Type {
+			return nil, fmt.Errorf(
+				"could not parse hash expression's key-value separator ':'",
+			)
+		}
+		p.nextToken()
+		p.nextToken()
+
+		right, err := p.parseExpression(LOWEST)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse hash expression's value: %s", err)
+		}
+
+		res.Map[left] = right
+
+		p.nextToken()
+		if token.COMMA == p.currentToken.Type {
+			p.nextToken()
+		}
+	}
+
+	// it can be EOF or '}'
+	if token.EOF == p.currentToken.Type {
+		return nil, fmt.Errorf("hash expression is missing closing '}'")
+	}
 
 	return res, nil
 }

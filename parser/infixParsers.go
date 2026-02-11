@@ -55,3 +55,26 @@ func (p *Parser) parseCallExpression(left ast.Expression) (ast.Expression, error
 
 	return res, nil
 }
+
+// left here is array literal or identifier
+func (p *Parser) parseIndexExpression(left ast.Expression) (ast.Expression, error) {
+	defer untrace(
+		trace(fmt.Sprintf("parseIndexExpression, identifier or literal is %s", left.String())),
+	)
+	res := &ast.IndexExpression{Token: p.currentToken, Identifier: left}
+
+	// go from '[' to expression
+	p.nextToken()
+	expr, err := p.parseExpression(LOWEST)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse array index expression: %s", err)
+	}
+	res.IndexExpression = expr
+	if token.RBRKT != p.peekToken.Type {
+		return nil, fmt.Errorf("index expression is missing closing ']'")
+	}
+	// go to ']'
+	p.nextToken()
+
+	return res, nil
+}

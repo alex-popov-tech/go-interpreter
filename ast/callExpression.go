@@ -22,5 +22,5 @@ func (this CallExpression) String() string {
 	for _, arg := range this.Arguments {
 		args = append(args, arg.String())
 	}
-	return fmt.Sprintf("(%s)", strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", this.FnIdentifier.String(), strings.Join(args, ", "))
 }

@@ -71,6 +71,10 @@ func (l *Lexer) NextToken() token.Token {
 		t = token.New(token.COMMA, string(l.currentChar))
 	case ';':
 		t = token.New(token.SEMICOLON, string(l.currentChar))
+	case '#':
+		t = token.New(token.HASH, string(l.currentChar))
+	case ':':
+		t = token.New(token.COLON, string(l.currentChar))
 
 	case '(':
 		t = token.New(token.LPAREN, string(l.currentChar))
@@ -80,6 +84,10 @@ func (l *Lexer) NextToken() token.Token {
 		t = token.New(token.LBRACE, string(l.currentChar))
 	case '}':
 		t = token.New(token.RBRACE, string(l.currentChar))
+	case '[':
+		t = token.New(token.LBRKT, string(l.currentChar))
+	case ']':
+		t = token.New(token.RBRKT, string(l.currentChar))
 	case '<':
 		if l.peekChar() == '=' {
 			first := string(l.currentChar)

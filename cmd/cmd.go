@@ -11,6 +11,8 @@ func Cmd() {
 	}
 
 	switch os.Args[1] {
+	case "version":
+		PrintVersion()
 	case "repl":
 		Repl()
 	case "run":

@@ -60,10 +60,15 @@ const (
 	RPAREN   = ")"
 	LBRACE   = "{"
 	RBRACE   = "}"
+	LBRKT    = "["
+	RBRKT    = "]"
 	LT       = "<"
 	LT_OR_EQ = "<="
 	GT       = ">"
 	GT_OR_EQ = ">="
+
+	HASH  = "#"
+	COLON = ":"
 
 	// keywords
 	FUNCTION = "FUNCTION"

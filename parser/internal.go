@@ -15,6 +15,7 @@ const (
 	BOOL        // && or ||
 	PREFIX      // -X or !X
 	CALL        // myfunc(X)
+	INDEX       // foo[x]
 )
 
 var precedences = map[token.TokenType]int{
@@ -30,6 +31,7 @@ var precedences = map[token.TokenType]int{
 	token.AND:      BOOL,
 	token.OR:       BOOL,
 	token.LPAREN:   CALL,
+	token.LBRKT:    INDEX,
 }
 
 func (p *Parser) peekPrecedence() int {
@@ -50,7 +52,7 @@ func (p *Parser) currPrecedence() int {
 // This enables error recovery so we can report multiple errors in one parse.
 func (p *Parser) skipCurrentStatement() {
 	// skip until end of file or semicolon
-	for p.currentToken.Type != token.EOF || p.currentToken.Type == token.SEMICOLON {
+	for p.currentToken.Type != token.EOF && p.currentToken.Type != token.SEMICOLON {
 		p.nextToken()
 	}
 	// if semicolon is found, advance

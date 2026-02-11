@@ -1,0 +1,76 @@
+version: '3'
+
+vars:
+  BINARY_NAME: monkey
+  BINARY_PATH: ./bin/{{.BINARY_NAME}}
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  dev:
+    desc: Start development mode with hot-reload
+    cmds:
+      - air -c .air.toml
+
+  build:
+    desc: Build the binary
+    cmds:
+      - go build -o {{.BINARY_PATH}} .
+    sources:
+      - ./**/*.go
+    generates:
+      - "{{.BINARY_PATH}}"
+
+  test:
+    desc: Run all tests
+    cmds:
+      - go test -v -race ./...
+
+  test:cover:
+    desc: Run tests with coverage
+    cmds:
+      - go test -v -race -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated at coverage.html"
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint run
+
+  lint:fix:
+    desc: Run linter and fix issues
+    cmds:
+      - golangci-lint run --fix
+
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./...
+
+  clean:
+    desc: Remove build artifacts
+    cmds:
+      - rm -rf ./bin ./dist ./tmp
+      - rm -f coverage.out coverage.html
+
+  release:local:
+    desc: Test release build locally
+    cmds:
+      - goreleaser build --snapshot --clean
+
+  run:
+    desc: Build and run with arguments
+    cmds:
+      - task: build
+      - "{{.BINARY_PATH}} {{.CLI_ARGS}}"
+
+  install:tools:
+    desc: Install development tools
+    cmds:
+      - go install github.com/air-verse/air@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - echo "Tools installed. Make sure $(go env GOPATH)/bin is in your PATH"
